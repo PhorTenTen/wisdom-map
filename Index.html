@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนที่ภูมิปัญญาท้องถิ่น | Local Wisdom GIS Map</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<!-- MarkerCluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: #0d1b2a;
+    color: #e8f4f8;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  #header {
+    background: linear-gradient(135deg, #0d1b2a 0%, #1a3a5c 100%);
+    border-bottom: 2px solid #2e7d9e;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  }
+
+  #header .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #header .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #2e9e6e, #1a6e4e);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  #header h1 {
+    font-family: 'Kanit', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e8f4f8;
+    line-height: 1.2;
+  }
+
+  #header h1 span {
+    display: block;
+    font-size: 11px;
+    font-weight: 300;
+    color: #7ab8d4;
+    letter-spacing: 1px;
+  }
+
+  #header .stats-bar {
+    display: flex;
+    gap: 20px;
+  }
+
+  .stat-pill {
+    background: rgba(46, 126, 158, 0.2);
+    border: 1px solid rgba(46, 126, 158, 0.4);
+    border-radius: 20px;
+    padding: 4px 14px;
+    text-align: center;
+  }
+
+  .stat-pill .num {
+    font-family: 'Kanit', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4dd9ac;
+  }
+
+  .stat-pill .lbl {
+    font-size: 10px;
+    color: #7ab8d4;
+    display: block;
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ===== SIDEBAR ===== */
+  #sidebar {
+    width: 300px;
+    background: #0f2035;
+    border-right: 1px solid #1e3a52;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 500;
+  }
+
+  .sidebar-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid #1e3a52;
+  }
+
+  .sidebar-section h3 {
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #7ab8d4;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  /* Search */
+  #search-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #2e5a7a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #e8f4f8;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #search-input:focus { border-color: #4dd9ac; }
+  #search-input::placeholder { color: #4a7a9a; }
+
+  /* Filter buttons */
+  .filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .filter-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #2e5a7a;
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 12px;
+    color: #a0c8e0;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--btn-color, #4dd9ac);
+    background: rgba(77,217,172,0.1);
+    color: #e8f4f8;
+  }
+
+  .filter-btn .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--btn-color, #4dd9ac);
+    flex-shrink: 0;
+  }
+
+  /* Layer controls */
+  .layer-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #a0c8e0;
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 36px; height: 20px;
+  }
+
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #1e3a52;
+    border-radius: 20px;
+    transition: 0.3s;
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; width: 14px;
+    left: 3px; bottom: 3px;
+    background: #7ab8d4;
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+
+  input:checked + .toggle-slider { background: #2e9e6e; }
+  input:checked + .toggle-slider:before {
+    transform: translateX(16px);
+    background: white;
+  }
+
+  /* Wisdom list */
+  #wisdom-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  #wisdom-list::-webkit-scrollbar { width: 4px; }
+  #wisdom-list::-webkit-scrollbar-track { background: transparent; }
+  #wisdom-list::-webkit-scrollbar-thumb { background: #2e5a7a; border-radius: 2px; }
+
+  .wisdom-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #1e3a52;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .wisdom-card:hover {
+    background: rgba(77,217,172,0.08);
+    border-color: #2e9e6e;
+    transform: translateX(2px);
+  }
+
+  .wisdom-card.selected {
+    background: rgba(77,217,172,0.12);
+    border-color: #4dd9ac;
+  }
+
+  .wisdom-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+
+  .wisdom-info h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8f4f8;
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  .wisdom-info .branch-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 3px;
+  }
+
+  .wisdom-info .village {
+    font-size: 11px;
+    color: #7ab8d4;
+  }
+
+  /* ===== MAP ===== */
+  #map {
+    flex: 1;
+    position: relative;
+  }
+
+  /* ===== POPUP STYLES ===== */
+  .leaflet-popup-content-wrapper {
+    background: #0f2035;
+    border: 1px solid #2e7d9e;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    padding: 0;
+    overflow: hidden;
+    min-width: 280px;
+  }
+
+  .leaflet-popup-tip { background: #0f2035; }
+
+  .popup-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #1e3a52;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .popup-avatar {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    border: 3px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+
+  .popup-title h3 {
+    font-family: 'Kanit', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #e8f4f8;
+    margin-bottom: 4px;
+  }
+
+  .popup-branch-tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+
+  .popup-body {
+    padding: 12px 16px;
+  }
+
+  .popup-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #a0c8e0;
+  }
+
+  .popup-row .icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .popup-row .val { color: #e8f4f8; }
+
+  .popup-desc {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #a0c8e0;
+    line-height: 1.6;
+    margin: 8px 0;
+    border-left: 3px solid #2e9e6e;
+  }
+
+  .popup-qr-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px;
+    background: linear-gradient(135deg, #1a6e4e, #0f4a32);
+    border: none;
+    border-radius: 8px;
+    color: #4dd9ac;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: opacity 0.2s;
+  }
+
+  .popup-qr-btn:hover { opacity: 0.85; }
+
+  /* ===== LEGEND ===== */
+  #legend {
+    position: absolute;
+    bottom: 30px;
+    right: 10px;
+    background: rgba(15,32,53,0.95);
+    border: 1px solid #2e5a7a;
+    border-radius: 12px;
+    padding: 12px 16px;
+    z-index: 800;
+    min-width: 180px;
+    backdrop-filter: blur(10px);
+  }
+
+  #legend h4 {
+    font-family: 'Kanit', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: #7ab8d4;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #1e3a52;
+    padding-bottom: 6px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #a0c8e0;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ===== BASEMAP CONTROL ===== */
+  .basemap-btn {
+    background: rgba(15,32,53,0.9);
+    border: 1px solid #2e5a7a;
+    color: #a0c8e0;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: 'Sarabun', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .basemap-btn:first-child { border-radius: 8px 0 0 8px; }
+  .basemap-btn:last-child { border-radius: 0 8px 8px 0; }
+  .basemap-btn.active { background: #1a6e4e; color: white; border-color: #2e9e6e; }
+
+  #basemap-control {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 800;
+    display: flex;
+  }
+
+  /* No results */
+  .no-results {
+    text-align: center;
+    padding: 30px 16px;
+    color: #4a7a9a;
+    font-size: 13px;
+  }
+
+  /* Detail panel */
+  #detail-panel {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(15,32,53,0.97);
+    border-top: 2px solid #2e7d9e;
+    z-index: 700;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  #detail-panel.open { transform: translateY(0); }
+
+  #detail-panel-close {
+    position: absolute;
+    top: 10px; right: 12px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #e8f4f8;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .detail-inner {
+    padding: 14px 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-area">
+    <div class="logo-icon">🗺️</div>
+    <h1>
+      แผนที่ภูมิปัญญาท้องถิ่น
+      <span>Local Wisdom GIS Interactive Map v1.0</span>
+    </h1>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-pill">
+      <span class="num" id="total-count">12</span>
+      <span class="lbl">ปราชญ์ทั้งหมด</span>
+    </div>
+    <div class="stat-pill">
+      <span class="num" id="branch-count">7</span>
+      <span class="lbl">สาขาภูมิปัญญา</span>
+    </div>
+    <div class="stat-pill">
+      <span class="num" id="village-count">8</span>
+      <span class="lbl">หมู่บ้าน</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <!-- Search -->
+    <div class="sidebar-section">
+      <h3>🔍 ค้นหา</h3>
+      <input type="text" id="search-input" placeholder="ชื่อปราชญ์ / สาขา / หมู่บ้าน...">
+    </div>
+
+    <!-- Filter by branch -->
+    <div class="sidebar-section">
+      <h3>📋 กรองตามสาขา</h3>
+      <div class="filter-grid" id="filter-buttons">
+        <button class="filter-btn active" data-branch="all" style="--btn-color:#4dd9ac">
+          <span class="dot"></span> ทั้งหมด
+        </button>
+      </div>
+    </div>
+
+    <!-- Layer controls -->
+    <div class="sidebar-section">
+      <h3>🗂️ ชั้นข้อมูล</h3>
+      <div class="layer-toggle">
+        <span>📍 จุดปราชญ์ชาวบ้าน</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="layer-markers" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <span>🔥 Heatmap ความหนาแน่น</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="layer-heat">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <span>🏘️ เส้นแบ่งเขตหมู่บ้าน</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="layer-boundary" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Wisdom list -->
+    <div style="padding:10px 16px 6px; border-bottom:1px solid #1e3a52;">
+      <span style="font-size:11px; color:#7ab8d4; text-transform:uppercase; letter-spacing:1px;">
+        📜 รายชื่อปราชญ์ <span id="list-count" style="color:#4dd9ac"></span>
+      </span>
+    </div>
+    <div id="wisdom-list"></div>
+
+  </div>
+
+  <!-- MAP -->
+  <div id="map">
+    <div id="basemap-control">
+      <button class="basemap-btn active" onclick="setBasemap('satellite')">🛰️ ดาวเทียม</button>
+      <button class="basemap-btn" onclick="setBasemap('street')">🗺️ ถนน</button>
+      <button class="basemap-btn" onclick="setBasemap('terrain')">🏔️ ภูมิประเทศ</button>
+    </div>
+    <div id="legend">
+      <h4>คำอธิบาย</h4>
+      <div id="legend-items"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+// ============================================================
+//  ข้อมูลตัวอย่าง — แก้ไขเพิ่มเติมข้อมูลจริงที่นี่
+// ============================================================
+const BRANCHES = {
+  'เกษตรกรรม':       { color: '#4dd9ac', bg: '#0d4a30', emoji: '🌾' },
+  'แพทย์แผนไทย':     { color: '#f4c16a', bg: '#4a2d00', emoji: '🌿' },
+  'ศิลปกรรม':        { color: '#f47eb0', bg: '#4a0a20', emoji: '🎨' },
+  'หัตถกรรม':        { color: '#7eb4f4', bg: '#0a204a', emoji: '🧶' },
+  'ภาษาและวรรณกรรม': { color: '#d4a0f0', bg: '#2a0a4a', emoji: '📚' },
+  'ศาสนาและประเพณี': { color: '#f4a06a', bg: '#4a1a00', emoji: '🙏' },
+  'การจัดการน้ำ':    { color: '#60c8e8', bg: '#003050', emoji: '💧' }
+};
+
+const WISDOM_DATA = [
+  {
+    id: 1,
+    name: 'นายสมศักดิ์ ทองสุข',
+    branch: 'เกษตรกรรม',
+    village: 'หมู่ที่ 1 บ้านกิโลแปด',
+    age: 68,
+    skill: 'การทำนาแบบดั้งเดิม ข้าวพันธุ์พื้นเมือง',
+    detail: 'มีประสบการณ์ด้านการเกษตรกรรมมากกว่า 40 ปี เชี่ยวชาญการปลูกข้าวพันธุ์พื้นเมือง และการจัดการน้ำแบบดั้งเดิม',
+    lat: 14.842, lng: 101.318
+  },
+  {
+    id: 2,
+    name: 'นางบุญเลิศ เดชอ้อน',
+    branch: 'แพทย์แผนไทย',
+    village: 'หมู่ที่ 2 บ้านโนนพลวง',
+    age: 72,
+    skill: 'สมุนไพรพื้นบ้าน การนวดแผนไทย',
+    detail: 'หมอพื้นบ้านที่มีความรู้เกี่ยวกับสมุนไพรในพื้นที่กว่า 200 ชนิด มีความสามารถในการรักษาโรคเบื้องต้นด้วยสมุนไพร',
+    lat: 14.835, lng: 101.325
+  },
+  {
+    id: 3,
+    name: 'นายกราว ทองสุข',
+    branch: 'ศิลปกรรม',
+    village: 'หมู่ที่ 3 บ้านตอนโพ',
+    age: 65,
+    skill: 'แกะสลักไม้ งานศิลปะพื้นบ้าน',
+    detail: 'ศิลปินแกะสลักไม้ที่มีชื่อเสียง ผลงานได้รับรางวัลระดับจังหวัด สืบทอดภูมิปัญญาจากบรรพบุรุษ',
+    lat: 14.850, lng: 101.330
+  },
+  {
+    id: 4,
+    name: 'นายประเจิด แสงมณี',
+    branch: 'หัตถกรรม',
+    village: 'หมู่ที่ 3 บ้านตอนโพ',
+    age: 70,
+    skill: 'จักสาน ทอผ้า ทำเครื่องใช้ไม้ไผ่',
+    detail: 'ช่างจักสานไม้ไผ่ฝีมือเยี่ยม สามารถทำผลิตภัณฑ์ได้หลากหลายรูปแบบ มีลูกศิษย์มากกว่า 50 คน',
+    lat: 14.848, lng: 101.333
+  },
+  {
+    id: 5,
+    name: 'นายณรงค์ แก้วมณี',
+    branch: 'ศาสนาและประเพณี',
+    village: 'หมู่ที่ 4 บ้านนามชาย',
+    age: 75,
+    skill: 'พิธีกรรม ประเพณีท้องถิ่น โหราศาสตร์',
+    detail: 'ผู้รู้พิธีกรรมท้องถิ่นทุกประเภท เป็นพราหมณ์พื้นบ้านที่ชุมชนให้ความเชื่อถือ',
+    lat: 14.838, lng: 101.308
+  },
+  {
+    id: 6,
+    name: 'น.ส.วาสนา วงศ์ตันยวด',
+    branch: 'ภาษาและวรรณกรรม',
+    village: 'หมู่ที่ 4 บ้านนามชาย',
+    age: 58,
+    skill: 'กลอนลำ เพลงพื้นบ้าน วรรณกรรมอีสาน',
+    detail: 'นักกลอนลำพื้นบ้านที่มีชื่อเสียง ได้รับรางวัลศิลปินพื้นบ้านดีเด่นระดับจังหวัด',
+    lat: 14.836, lng: 101.310
+  },
+  {
+    id: 7,
+    name: 'นางเกลียว เสร็จกิจ',
+    branch: 'เกษตรกรรม',
+    village: 'หมู่ที่ 5 บ้านโนนแดง',
+    age: 62,
+    skill: 'ศูนย์การเรียนรู้เพลง พืชบ้านแม่...',
+    detail: 'ปราชญ์เกษตรอินทรีย์ผู้บุกเบิกการทำเกษตรปลอดสารพิษในชุมชน จัดตั้งศูนย์การเรียนรู้ในพื้นที่',
+    lat: 14.825, lng: 101.305
+  },
+  {
+    id: 8,
+    name: 'นายจเด็จ ทองสุข',
+    branch: 'แพทย์แผนไทย',
+    village: 'หมู่ที่ 6 บ้านสนามชัย',
+    age: 80,
+    skill: 'ยาสมุนไพร นวดกดจุด',
+    detail: 'หมอยาพื้นบ้านสืบทอดมา 3 รุ่น มีตำรายาสมุนไพรโบราณที่หาได้ยาก รักษาได้ทั้งโรคกระดูกและกล้ามเนื้อ',
+    lat: 14.830, lng: 101.318
+  },
+  {
+    id: 9,
+    name: 'นายประนอม อุทัศน์',
+    branch: 'การจัดการน้ำ',
+    village: 'หมู่ที่ 6 บ้านสนามชัย',
+    age: 66,
+    skill: 'ระบบชลประทานพื้นบ้าน ฝายชะลอน้ำ',
+    detail: 'ผู้เชี่ยวชาญระบบจัดการน้ำชุมชน ได้รับรางวัลจากกรมชลประทานในการออกแบบฝายชะลอน้ำที่ยั่งยืน',
+    lat: 14.828, lng: 101.322
+  },
+  {
+    id: 10,
+    name: 'นายกฤษดาวัฒิ หาญสุภักรกุด',
+    branch: 'หัตถกรรม',
+    village: 'หมู่ที่ 7 บ้านวัดถ้ำ',
+    age: 55,
+    skill: 'ทำเครื่องปั้นดินเผา เซรามิกพื้นบ้าน',
+    detail: 'ช่างเครื่องปั้นดินเผาที่ผสมผสานลวดลายโบราณกับเทคนิคสมัยใหม่ ส่งออกไปต่างประเทศ',
+    lat: 14.820, lng: 101.328
+  },
+  {
+    id: 11,
+    name: 'นายนิศานาค ขันมั่น',
+    branch: 'ศิลปกรรม',
+    village: 'หมู่ที่ 7 บ้านวัดถ้ำ',
+    age: 69,
+    skill: 'ดนตรีพื้นบ้าน กีตาร์ซอ',
+    detail: 'นักดนตรีพื้นบ้านผู้อนุรักษ์เพลงโบราณ ฝึกสอนดนตรีพื้นบ้านแก่เยาวชนมากกว่า 200 คน',
+    lat: 14.822, lng: 101.312
+  },
+  {
+    id: 12,
+    name: 'นางน้ำเชื่อม โตพันธ์ดี',
+    branch: 'ภาษาและวรรณกรรม',
+    village: 'หมู่ที่ 8 บ้านหนองกก',
+    age: 73,
+    skill: 'นิทานพื้นบ้าน ตำนานท้องถิ่น',
+    detail: 'นักเล่านิทานพื้นบ้านที่รวบรวมตำนานท้องถิ่นไว้มากกว่า 150 เรื่อง เป็นคลังความรู้ด้านวัฒนธรรมของชุมชน',
+    lat: 14.844, lng: 101.340
+  }
+];
+
+// ขอบเขตหมู่บ้าน (ตัวอย่าง Polygon)
+const VILLAGE_BOUNDARIES = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: { name: 'พื้นที่ตำบลสนามชัย (เขตตัวอย่าง)', moo: 'ทั้งตำบล' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[101.300, 14.820],[101.350, 14.820],[101.350, 14.858],[101.300, 14.858],[101.300, 14.820]]]
+      }
+    }
+  ]
+};
+
+// ============================================================
+//  MAP INITIALIZATION
+// ============================================================
+const map = L.map('map', {
+  center: [14.838, 101.322],
+  zoom: 13,
+  zoomControl: true
+});
+
+// Basemap layers
+const basemaps = {
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri World Imagery',
+    maxZoom: 19
+  }),
+  street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'OpenStreetMap',
+    maxZoom: 19
+  }),
+  terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: 'OpenTopoMap',
+    maxZoom: 17
+  })
+};
+
+basemaps.satellite.addTo(map);
+let currentBasemap = 'satellite';
+
+function setBasemap(type) {
+  Object.values(basemaps).forEach(l => map.removeLayer(l));
+  basemaps[type].addTo(map);
+  currentBasemap = type;
+  document.querySelectorAll('.basemap-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Move zoom control
+map.zoomControl.setPosition('bottomright');
+
+// ============================================================
+//  MARKERS
+// ============================================================
+const markersGroup = L.markerClusterGroup({
+  maxClusterRadius: 50,
+  iconCreateFunction: function(cluster) {
+    return L.divIcon({
+      html: `<div style="
+        background:linear-gradient(135deg,#1a6e4e,#0f4a32);
+        border:2px solid #4dd9ac;
+        border-radius:50%;
+        width:36px;height:36px;
+        display:flex;align-items:center;justify-content:center;
+        color:#4dd9ac;font-weight:700;font-size:13px;
+        box-shadow:0 2px 10px rgba(0,0,0,0.5);
+        font-family:'Kanit',sans-serif;
+      ">${cluster.getChildCount()}</div>`,
+      className: '',
+      iconSize: [36, 36]
+    });
+  }
+});
+
+let allMarkers = {};
+
+function createIcon(branch) {
+  const b = BRANCHES[branch] || { color: '#aaa', bg: '#333', emoji: '📌' };
+  return L.divIcon({
+    html: `<div style="
+      background:${b.bg};
+      border:2.5px solid ${b.color};
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      width:32px;height:32px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 3px 12px rgba(0,0,0,0.5);
+    ">
+      <span style="transform:rotate(45deg);font-size:14px">${b.emoji}</span>
+    </div>`,
+    className: '',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -34]
+  });
+}
+
+function createPopup(w) {
+  const b = BRANCHES[w.branch] || { color: '#aaa', bg: '#333', emoji: '📌' };
+  return `
+    <div class="popup-header">
+      <div class="popup-avatar" style="background:${b.bg};border-color:${b.color}">
+        <span style="font-size:22px">${b.emoji}</span>
+      </div>
+      <div class="popup-title">
+        <h3>${w.name}</h3>
+        <span class="popup-branch-tag" style="background:${b.bg};color:${b.color};border:1px solid ${b.color}40">
+          ${w.branch}
+        </span>
+      </div>
+    </div>
+    <div class="popup-body">
+      <div class="popup-row">
+        <span class="icon">🏘️</span>
+        <span>${w.village}</span>
+      </div>
+      <div class="popup-row">
+        <span class="icon">👤</span>
+        <span>อายุ <span class="val">${w.age} ปี</span></span>
+      </div>
+      <div class="popup-row">
+        <span class="icon">⭐</span>
+        <span>ความเชี่ยวชาญ: <span class="val">${w.skill}</span></span>
+      </div>
+      <div class="popup-desc">${w.detail}</div>
+      <div class="popup-row" style="margin-top:8px">
+        <span class="icon">📍</span>
+        <span style="font-size:10px;color:#7ab8d4">พิกัด: ${w.lat.toFixed(4)}, ${w.lng.toFixed(4)}</span>
+      </div>
+      <button class="popup-qr-btn" onclick="alert('QR Code: กำลังสร้าง QR Code สำหรับ ${w.name}\\n\\nในระบบจริง ให้เชื่อมต่อกับ Google Sheets หรือ API ของท่าน')">
+        📱 สแกน QR Code ดูข้อมูลเพิ่มเติม
+      </button>
+    </div>
+  `;
+}
+
+WISDOM_DATA.forEach(w => {
+  const marker = L.marker([w.lat, w.lng], { icon: createIcon(w.branch) });
+  marker.bindPopup(createPopup(w), { maxWidth: 300 });
+  marker.wisdomData = w;
+  markersGroup.addLayer(marker);
+  allMarkers[w.id] = marker;
+});
+
+map.addLayer(markersGroup);
+
+// ============================================================
+//  HEATMAP
+// ============================================================
+const heatData = WISDOM_DATA.map(w => [w.lat, w.lng, 1.0]);
+const heatLayer = L.heatLayer(heatData, {
+  radius: 40,
+  blur: 25,
+  maxZoom: 15,
+  gradient: { 0.2: '#4dd9ac', 0.5: '#f4c16a', 0.8: '#f47460' }
+});
+
+// ============================================================
+//  BOUNDARY LAYER
+// ============================================================
+const boundaryLayer = L.geoJSON(VILLAGE_BOUNDARIES, {
+  style: {
+    color: '#4dd9ac',
+    weight: 1.5,
+    opacity: 0.6,
+    fillColor: '#4dd9ac',
+    fillOpacity: 0.04,
+    dashArray: '5,5'
+  },
+  onEachFeature: function(feature, layer) {
+    layer.bindTooltip(`<span style="font-family:'Sarabun',sans-serif;font-size:13px;color:#e8f4f8;background:#0f2035;padding:4px 10px;border-radius:6px;border:1px solid #2e7d9e">${feature.properties.name}</span>`, { sticky: true });
+  }
+});
+boundaryLayer.addTo(map);
+
+// ============================================================
+//  LAYER TOGGLES
+// ============================================================
+document.getElementById('layer-markers').addEventListener('change', function() {
+  if (this.checked) map.addLayer(markersGroup);
+  else map.removeLayer(markersGroup);
+});
+
+document.getElementById('layer-heat').addEventListener('change', function() {
+  if (this.checked) map.addLayer(heatLayer);
+  else map.removeLayer(heatLayer);
+});
+
+document.getElementById('layer-boundary').addEventListener('change', function() {
+  if (this.checked) map.addLayer(boundaryLayer);
+  else map.removeLayer(boundaryLayer);
+});
+
+// ============================================================
+//  FILTER BUTTONS
+// ============================================================
+const filterContainer = document.getElementById('filter-buttons');
+const branches = Object.keys(BRANCHES);
+
+branches.forEach(branch => {
+  const b = BRANCHES[branch];
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.dataset.branch = branch;
+  btn.style.setProperty('--btn-color', b.color);
+  btn.innerHTML = `<span class="dot"></span> ${b.emoji} ${branch}`;
+  filterContainer.appendChild(btn);
+});
+
+let currentBranch = 'all';
+
+filterContainer.addEventListener('click', function(e) {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentBranch = btn.dataset.branch;
+  filterAndRender();
+});
+
+// ============================================================
+//  SEARCH
+// ============================================================
+document.getElementById('search-input').addEventListener('input', function() {
+  filterAndRender();
+});
+
+// ============================================================
+//  FILTER & RENDER
+// ============================================================
+function filterAndRender() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  const filtered = WISDOM_DATA.filter(w => {
+    const matchBranch = currentBranch === 'all' || w.branch === currentBranch;
+    const matchSearch = !query ||
+      w.name.toLowerCase().includes(query) ||
+      w.branch.toLowerCase().includes(query) ||
+      w.village.toLowerCase().includes(query) ||
+      w.skill.toLowerCase().includes(query);
+    return matchBranch && matchSearch;
+  });
+
+  // Update sidebar list
+  renderList(filtered);
+
+  // Update markers visibility
+  markersGroup.clearLayers();
+  filtered.forEach(w => markersGroup.addLayer(allMarkers[w.id]));
+
+  // Update count
+  document.getElementById('list-count').textContent = `(${filtered.length})`;
+}
+
+function renderList(data) {
+  const container = document.getElementById('wisdom-list');
+  if (data.length === 0) {
+    container.innerHTML = `<div class="no-results">🔍 ไม่พบข้อมูลที่ค้นหา</div>`;
+    return;
+  }
+  container.innerHTML = data.map(w => {
+    const b = BRANCHES[w.branch] || { color: '#aaa', bg: '#333', emoji: '📌' };
+    return `
+      <div class="wisdom-card" data-id="${w.id}" onclick="focusMarker(${w.id})">
+        <div class="wisdom-avatar" style="background:${b.bg};border-color:${b.color}40">
+          ${b.emoji}
+        </div>
+        <div class="wisdom-info">
+          <h4>${w.name}</h4>
+          <span class="branch-tag" style="background:${b.bg};color:${b.color};border:1px solid ${b.color}40">${w.branch}</span><br>
+          <span class="village">📍 ${w.village}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function focusMarker(id) {
+  const w = WISDOM_DATA.find(x => x.id === id);
+  if (!w) return;
+  map.setView([w.lat, w.lng], 16, { animate: true });
+  setTimeout(() => allMarkers[id].openPopup(), 500);
+
+  document.querySelectorAll('.wisdom-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.wisdom-card[data-id="${id}"]`)?.classList.add('selected');
+}
+
+// ============================================================
+//  LEGEND
+// ============================================================
+function renderLegend() {
+  const container = document.getElementById('legend-items');
+  container.innerHTML = Object.entries(BRANCHES).map(([name, b]) =>
+    `<div class="legend-item">
+      <div class="legend-dot" style="background:${b.color}"></div>
+      <span>${b.emoji} ${name}</span>
+    </div>`
+  ).join('');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+renderList(WISDOM_DATA);
+renderLegend();
+document.getElementById('list-count').textContent = `(${WISDOM_DATA.length})`;
+
+// Scale control
+L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
+// Click map to close selected card
+map.on('click', function() {
+  document.querySelectorAll('.wisdom-card').forEach(c => c.classList.remove('selected'));
+});
+
+console.log('✅ แผนที่ภูมิปัญญาท้องถิ่น พร้อมใช้งาน!');
+console.log('📝 วิธีเพิ่มข้อมูล: แก้ไขตัวแปร WISDOM_DATA ด้านบน');
+console.log('🗺️ พิกัดจริง: ใช้ Google Maps คลิกขวา > คัดลอกพิกัด');
+</script>
+</body>
+</html>
